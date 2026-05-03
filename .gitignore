@@ -1,0 +1,5 @@
+# Compiled intermediate binary (app bundle contains its own copy)
+gemini-panel
+
+# macOS
+.DS_Store
