@@ -2,8 +2,20 @@ import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
+    private var userApp: NSRunningApplication?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 记录启动时用户正在用的 App
+        userApp = NSWorkspace.shared.frontmostApplication
+
+        // 持续追踪用户最后使用的 App
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(activeAppChanged(_:)),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+
         let button = NSButton(title: "截图询问", target: self, action: #selector(captureScreenshot))
         button.bezelStyle = .rounded
         button.font = NSFont.systemFont(ofSize: 15, weight: .medium)
@@ -48,12 +60,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
+    @objc private func activeAppChanged(_ notification: Notification) {
+        if let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+           app.bundleIdentifier != Bundle.main.bundleIdentifier,
+           app.activationPolicy == .regular {
+            userApp = app
+        }
+    }
+
     @objc private func captureScreenshot() {
         window.orderOut(nil)
 
-        switchToPreviousApp()
+        // 切回用户正在用的 App
+        if let app = userApp, !app.isTerminated {
+            app.activate(options: [])
+        }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
             process.arguments = ["-i", "-c"]
@@ -69,15 +92,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSUserNotificationCenter.default.deliver(notification)
             }
         }
-    }
-
-    private func switchToPreviousApp() {
-        let ourBundleId = Bundle.main.bundleIdentifier
-        guard let previousApp = NSWorkspace.shared.runningApplications.first(where: {
-            $0.activationPolicy == .regular && !$0.isHidden && $0.bundleIdentifier != ourBundleId
-        }) else { return }
-
-        previousApp.activate(options: .activateIgnoringOtherApps)
     }
 
     @objc private func closePanel() {
