@@ -9,20 +9,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.font = NSFont.systemFont(ofSize: 15, weight: .medium)
         button.translatesAutoresizingMaskIntoConstraints = false
 
-        let contentView = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 56))
+        let closeButton = NSButton(title: "×", target: self, action: #selector(closePanel))
+        closeButton.bezelStyle = .inline
+        closeButton.font = NSFont.systemFont(ofSize: 15, weight: .regular)
+        closeButton.isBordered = false
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+
+        let contentView = NSView(frame: NSRect(x: 0, y: 0, width: 330, height: 56))
         contentView.wantsLayer = true
         contentView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
         contentView.addSubview(button)
+        contentView.addSubview(closeButton)
 
         NSLayoutConstraint.activate([
             button.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
             button.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             button.widthAnchor.constraint(equalToConstant: 180),
-            button.heightAnchor.constraint(equalToConstant: 32)
+            button.heightAnchor.constraint(equalToConstant: 32),
+
+            closeButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
+            closeButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
+            closeButton.widthAnchor.constraint(equalToConstant: 24),
+            closeButton.heightAnchor.constraint(equalToConstant: 24)
         ])
 
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 300, height: 56),
+            contentRect: NSRect(x: 0, y: 0, width: 330, height: 56),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -39,7 +51,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func captureScreenshot() {
         window.orderOut(nil)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        // cmd-tab 切回上一个应用，避免只截到桌面
+        switchToPreviousApp()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
             process.arguments = ["-i", "-c"]
@@ -55,6 +70,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSUserNotificationCenter.default.deliver(notification)
             }
         }
+    }
+
+    private func switchToPreviousApp() {
+        let source = "tell application \"System Events\" to key code 48 using command down"
+        NSAppleScript(source: source)?.executeAndReturnError(nil)
+    }
+
+    @objc private func closePanel() {
+        NSApplication.shared.terminate(nil)
     }
 }
 
