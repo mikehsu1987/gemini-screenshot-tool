@@ -51,10 +51,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func captureScreenshot() {
         window.orderOut(nil)
 
-        // cmd-tab 切回上一个应用，避免只截到桌面
         switchToPreviousApp()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
             process.arguments = ["-i", "-c"]
@@ -73,8 +72,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func switchToPreviousApp() {
-        let source = "tell application \"System Events\" to key code 48 using command down"
-        NSAppleScript(source: source)?.executeAndReturnError(nil)
+        let ourBundleId = Bundle.main.bundleIdentifier
+        guard let previousApp = NSWorkspace.shared.runningApplications.first(where: {
+            $0.activationPolicy == .regular && !$0.isHidden && $0.bundleIdentifier != ourBundleId
+        }) else { return }
+
+        previousApp.activate(options: .activateIgnoringOtherApps)
     }
 
     @objc private func closePanel() {
