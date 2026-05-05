@@ -1,14 +1,15 @@
 import AppKit
 
+private let panelSize = NSSize(width: 168, height: 42)
+private let cornerRadius: CGFloat = 21
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
     private var userApp: NSRunningApplication?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // 记录启动时用户正在用的 App
         userApp = NSWorkspace.shared.frontmostApplication
 
-        // 持续追踪用户最后使用的 App
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
             selector: #selector(activeAppChanged(_:)),
@@ -16,43 +17,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
-        let button = NSButton(title: "截图询问", target: self, action: #selector(captureScreenshot))
-        button.bezelStyle = .rounded
-        button.font = NSFont.systemFont(ofSize: 15, weight: .medium)
+        let button = NSButton(title: "截图", target: self, action: #selector(captureScreenshot))
+        button.bezelStyle = .texturedRounded
+        button.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        button.isBordered = false
+        button.contentTintColor = NSColor.labelColor
         button.translatesAutoresizingMaskIntoConstraints = false
 
         let closeButton = NSButton(title: "×", target: self, action: #selector(closePanel))
         closeButton.bezelStyle = .inline
-        closeButton.font = NSFont.systemFont(ofSize: 15, weight: .regular)
+        closeButton.font = NSFont.systemFont(ofSize: 14, weight: .regular)
         closeButton.isBordered = false
+        closeButton.contentTintColor = NSColor.secondaryLabelColor
         closeButton.translatesAutoresizingMaskIntoConstraints = false
 
-        let contentView = NSView(frame: NSRect(x: 0, y: 0, width: 330, height: 56))
+        let contentView = NSView(frame: NSRect(origin: .zero, size: panelSize))
         contentView.wantsLayer = true
-        contentView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        contentView.layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.92).cgColor
+        contentView.layer?.cornerRadius = cornerRadius
+        contentView.layer?.borderWidth = 0.5
+        contentView.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.45).cgColor
+        contentView.layer?.shadowColor = NSColor.black.cgColor
+        contentView.layer?.shadowOpacity = 0.16
+        contentView.layer?.shadowRadius = 14
+        contentView.layer?.shadowOffset = NSSize(width: 0, height: -4)
         contentView.addSubview(button)
         contentView.addSubview(closeButton)
 
         NSLayoutConstraint.activate([
-            button.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            button.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 14),
             button.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            button.widthAnchor.constraint(equalToConstant: 180),
-            button.heightAnchor.constraint(equalToConstant: 32),
+            button.widthAnchor.constraint(equalToConstant: 110),
+            button.heightAnchor.constraint(equalToConstant: 30),
 
-            closeButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
-            closeButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
-            closeButton.widthAnchor.constraint(equalToConstant: 24),
-            closeButton.heightAnchor.constraint(equalToConstant: 24)
+            closeButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
+            closeButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            closeButton.widthAnchor.constraint(equalToConstant: 22),
+            closeButton.heightAnchor.constraint(equalToConstant: 22)
         ])
 
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 330, height: 56),
+            contentRect: NSRect(origin: .zero, size: panelSize),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
         window.contentView = contentView
         window.isReleasedWhenClosed = false
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = false
         window.level = .floating
         window.collectionBehavior = [.canJoinAllSpaces]
         window.isMovableByWindowBackground = true
@@ -71,7 +85,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func captureScreenshot() {
         window.orderOut(nil)
 
-        // 切回用户正在用的 App
         if let app = userApp, !app.isTerminated {
             app.activate(options: [])
         }
@@ -88,7 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if process.terminationStatus == 0 {
                 let notification = NSUserNotification()
                 notification.title = "截图已复制"
-                notification.informativeText = "已在剪贴板，按 ⌘V 粘贴。用完可复制一段普通文字覆盖。"
+                notification.informativeText = "按 ⌘V 粘贴。"
                 NSUserNotificationCenter.default.deliver(notification)
             }
         }
